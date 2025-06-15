@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YAML Result</title>
+    <link rel="stylesheet" href="/static/css/yaml.css">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #2d3748;
+            --box-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --yaml-bg: #f7fafc;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a202c;
+            --text-color: #e2e8f0;
+            --box-bg: #2d3748;
+            --border-color: #4a5568;
+            --yaml-bg: #2d3748;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease;
+        }
+
+        .content-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .content-box {
+            background: var(--box-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            position: relative;
+        }
+
+        .yaml-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .yaml-header h1 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .copy-button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+        }
+
+        .copy-button:hover {
+            color: #3b82f6;
+        }
+
+        #yaml-clipboard {
+            width: 100%;
+            min-height: 200px;
+            padding: 16px;
+            background: var(--yaml-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            margin-bottom: 20px;
+            overflow: auto;
+        }
+
+        #deployBtn {
+            width: 100%;
+            padding: 12px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+
+        #deployBtn:hover {
+            background-color: #2563eb;
+        }
+
+        .theme-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .theme-switch input {
+            display: none;
+        }
+
+        .theme-switch span {
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .guide-box {
+            margin: 20px 0;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .guide-box h2 {
+            margin: 0 0 10px 0;
+        }
+
+        .guide-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <ul class="navbar">
+            <div class="nav-left">
+                <li><a href="/">Home</a></li> 
+                <li><a href="/">About</a></li>
+            </div>
+            <div class="nav-right">
+                <li><a href="/upload">Device CLI</a></li>
+                <li><a href="/user_input">Data</a></li>
+            </div>
+        </ul>
+    </nav>
+    <div class="content-container">
+        <div class="guide-box">
+            <h2>🔍 Network Topology View</h2>
+            <ul>
+                <li>Interactive network diagram below</li>
+                <li>Click connections to view interface details</li>
+                <li>Use refresh button to update the view</li>
+            </ul>
+        </div>
+        <div class="content-box">
+            <div class="yaml-header">
+                <h1>{{ message }}</h1>
+                <div class="controls">
+                    <label class="theme-switch">
+                        <input type="checkbox" id="themeToggle">
+                        <span>🌙</span>
+                    </label>
+                    <button class="copy-button" id="copyBtn">
+                        <span>📋</span>
+                        Copy
+                    </button>
+                </div>
+            </div>
+
+            <pre id="yaml-clipboard" readonly>{{ yaml }}</pre>
+            <button id="deployBtn">Deploy Lab</button>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggling
+        const themeToggle = document.getElementById('themeToggle');
+        const themeLabel = themeToggle.nextElementSibling;
+        
+        function setTheme(isDark) {
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            themeLabel.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        themeToggle.addEventListener('change', (e) => {
+            setTheme(e.target.checked);
+        });
+
+        // Copy functionality
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            const yamlContent = document.getElementById('yaml-clipboard').textContent;
+            navigator.clipboard.writeText(yamlContent).then(() => {
+                this.innerHTML = '<span>✓</span> Copied';
+                setTimeout(() => {
+                    this.innerHTML = '<span>📋</span> Copy';
+                }, 2000);
+            });
+        });
+
+        // Deploy functionality
+        document.getElementById('deployBtn').addEventListener('click', function() {
+            this.textContent = 'Deploying...';
+            window.location.href = '/visualiser'; // Redirect to the deploy page
+            // Add your deploy functionality here
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+

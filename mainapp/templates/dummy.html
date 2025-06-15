@@ -1,3 +1,79 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topology Builder</title>
+    <link rel="stylesheet" href="/static/css/home.css">
+     <style>
+        .split-layout {
+            display: flex;
+            height: calc(100vh - 60px);
+            margin-top: 10px;
+            position: relative;
+            gap:5px
+        }
+          .left-section {
+            flex: 0 0 70%;
+            padding: 20px;
+            min-width: 200px;
+            overflow: auto;
+            margin: 10px;
+
+        }
+        
+        .right-section {
+            flex: 0 0 30%;
+            padding: 5px;
+            overflow: auto;
+            border:#1d1d7d;
+            height: fit-content;
+        }
+        </style>
+</head>
+<body>
+    <nav>
+        <ul class="navbar">
+            <div class="nav-left">
+                <li><a href="/">Home</a></li> 
+                <li><a href="/">About</a></li>
+            </div>
+            <div class="nav-right">
+                <li><a href="/upload">Device CLI</a></li>
+                <li><a href="/user_input">Data</a></li>
+            </div>
+        </ul>
+    </nav>
+    <div class="mid-body">
+        <h1>BGL AI Topology Builder</h1>
+    </div>
+
+        <div class="input-container">
+                <div class="input-button-group">
+                    <form method="POST"  action="{% url 'user_input' %}" id="topology-form">
+                        {% csrf_token %}
+                        <p>Describe your topology</p>
+                        <textarea id="user-input" name="user_input" 
+                            placeholder="&#10;Example: R1--R2--R3, V7.11&#10;Or: R1--SW1--R2, all-nx" 
+                            autocomplete="off" 
+                            required
+                            style="width: 100%; font-family:'Courier New', Courier, monospace; font-size: large;"
+                            rows="7"></textarea>
+                        
+                        <div class="button-group">
+                            <button type="submit" class="action-button" name="action" value="generate">Generate YAML</button>
+                            <button type="submit" class="action-button" name="action" value="deploy">Deploy Topology</button>
+                            <button type="submit" class="action-button" name="action" value="destroy">Destroy Lab</button>
+                        </div>
+
+                    </form>
+                </div>
+    </div>
+
+
+
+</body>
+</html> -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,38 +85,35 @@
         .split-layout {
             display: flex;
             height: calc(100vh - 120px); /* Adjusted for navbar and title */
-            margin-top: 30px;
+            margin-top: 10px;
             position: relative;
-            gap: 30px;
-            padding: 0 30px;
-            max-width: 1400px;
+            gap: 15px;
+            padding: 0 15px;
+            max-width: 1600px;
             margin-left: auto;
             margin-right: auto;
         }
         
         .left-section {
-            flex: 0 0 55%;
-            /* background: white;
+            flex: 0 0 50%;
+            background: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             padding: 30px;
             display: flex;
-            
-            align-items: flex-start;
-            height: fit-content;*/
             justify-content: center;
-            max-height: 400px; 
-
+            align-items: flex-start;
+            margin-right: 10px;
+            height: fit-content;
+            max-height: 500px;
         }
         
         .right-section {
-            flex: 0 0 45%;
+            flex: 0 0 50%;
             display: flex;
             flex-direction: column;
             gap: 15px;
-            max-width: 550px;
-            margin-right: 20px;
-            height: fit-content;
+            max-width: none;
         }
 
         .yaml-section {
@@ -186,84 +259,17 @@
         <div class="left-section">
             <form method="POST" action="{% url 'user_input' %}" id="topology-form">
                 {% csrf_token %}
-                <h5 style="text-align: left; margin-left: 0; width: 100%; align-self: flex-start;">Describe your topology</h5>
+                <p>Describe your topology</p>
                 <textarea id="user-input" name="user_input" 
                     placeholder="Example: R1--R2--R3, V7.11&#10;Or: R1--SW1--R2, all-nx" 
                     autocomplete="off" 
-                    rows="10"
                     required></textarea>
                 
                 <div class="button-group">
-                    <button type="submit" class="action-button" name="action" id="generate" value="generate">Generate YAML</button>
-                    <button class="action-button" name="action" id="deployBtn" type="button">Deploy Topology</button>
+                    <button type="submit" class="action-button" name="action" value="generate">Generate YAML</button>
+                    <button type="submit" class="action-button" name="action" value="deploy">Deploy Topology</button>
                 </div>
             </form>
-            
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const form = document.getElementById('topology-form');
-                    const generateButton = document.getElementById('generate');
-                    const yamlDisplay = document.getElementById('yaml-clipboard');
-                    const messageDisplay = document.querySelector('.yaml-header h2');
-                    const copyButton = document.getElementById('copyBtn');
-
-                    form.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        
-                        // Show loading state
-                        generateButton.disabled = true;
-                        generateButton.textContent = 'Generating...';
-                        
-                        const formData = new FormData(this);
-                        formData.append('action', 'generate');
-                        
-                        fetch('/user_input/', {
-                            method: 'POST',
-                            body: formData,
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                yamlDisplay.textContent = data.yaml;
-                                messageDisplay.textContent = data.message;
-                            } else {
-                                messageDisplay.textContent = data.message;
-                                yamlDisplay.textContent = '';
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            messageDisplay.textContent = 'Error generating YAML';
-                            yamlDisplay.textContent = '';
-                        })
-                        .finally(() => {
-                            generateButton.disabled = false;
-                            generateButton.textContent = 'Generate YAML';
-                        });
-                    });
-
-                    // Copy to clipboard functionality
-                    copyButton.addEventListener('click', function() {
-                        const yamlText = yamlDisplay.textContent;
-                        navigator.clipboard.writeText(yamlText)
-                            .then(() => {
-                                copyButton.textContent = '✓ Copied!';
-                                setTimeout(() => {
-                                    copyButton.innerHTML = '<span>📋</span> Copy';
-                                }, 2000);
-                            })
-                            .catch(() => {
-                                copyButton.textContent = 'Copy failed';
-                                setTimeout(() => {
-                                    copyButton.innerHTML = '<span>📋</span> Copy';
-                                }, 2000);
-                            });
-                    });
-                });
-            </script>
         </div>
 
         
@@ -281,11 +287,11 @@
             </div>
 
             <!-- Visualization -->
-            <!-- {% if graph_url %}
+            {% if graph_url %}
             <div class="visualization-section">
                 <iframe src="{{ graph_url }}" width="100%" height="400" style="border: none; border-radius: 6px;"></iframe>
             </div>
-            {% endif %} -->
+            {% endif %}
         </div>
     </div>
 
@@ -299,11 +305,6 @@
                     this.innerHTML = '<span>📋</span> Copy';
                 }, 2000);
             });
-        });
-
-        document.getElementById('deployBtn').addEventListener('click', function() {
-            this.textContent = 'Deploying...';
-            window.location.href = '/visualiser';
         });
     </script>
 </body>

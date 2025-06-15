@@ -1,11 +1,10 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from .imported.llm_agent import clean_version_in_input, get_yaml, destroy_lab
-from .imported.webex_bot import WebexBot
 import subprocess, os, signal, time
-import json
+from django.views.decorators.csrf import csrf_exempt
 import re
+from .imported.webex_bot import WebexBot
 
 GRAPH_URL = "http://10.77.92.106:50080/"
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -386,80 +385,144 @@ def user_input(request):
 
 
 
+# from django.shortcuts import render
+# from django.http import HttpResponse
+# # from .utils import get_yaml, clean_version_in_input  # Your custom functions
+# from .imported.llm_agent import clean_version_in_input, get_yaml, destroy_lab
+# import subprocess, os, signal
+
+# from django.shortcuts import render
+
+# GRAPH_URL = "http://10.77.92.106:50080/"
+
+
+# def restart_containerlab_graph(topology_file="current_lab.yml", port=50080):
+#     # Kill existing containerlab graph processes
+#     try:
+#         ps = subprocess.Popen(['ps', 'aux'], stdout=subprocess.PIPE)
+#         grep = subprocess.Popen(['grep', 'containerlab graph'], stdin=ps.stdout, stdout=subprocess.PIPE)
+#         awk = subprocess.Popen(['awk', '{print $2}'], stdin=grep.stdout, stdout=subprocess.PIPE)
+#         ps.stdout.close()
+#         grep.stdout.close()
+#         pids = awk.communicate()[0].decode('utf-8').split()
+#         for pid in pids:
+#             if pid and pid != str(os.getpid()):
+#                 try:
+#                     os.kill(int(pid), signal.SIGKILL)
+#                 except Exception:
+#                     pass
+#     except Exception as e:
+#         print(f"[ERROR] Killing old graph processes: {e}")
+
+#     # Start containerlab graph
+#     try:
+#         subprocess.Popen(
+#             ["containerlab", "graph", "-t", topology_file],
+#             stdout=subprocess.DEVNULL,
+#             stderr=subprocess.DEVNULL
+#         )
+#         return True
+#     except Exception as e:
+#         print(f"[ERROR] Starting containerlab graph: {e}")
+#         return False
+
+
+# def view_toplogy(request):
+#     """Django view to restart containerlab graph and render iframe."""
+#     success = restart_containerlab_graph("current_lab.yml", port=50080)
+#     message = (
+#         "✅ Containerlab graph server started successfully."
+#         if success else
+#         "❌ Failed to start containerlab graph server."
+#     )
+#     return render(request, 'visualise.html', {
+#         'message': message,
+#         'graph_url': GRAPH_URL
+#     })
+
+
+
+# # def visualise_topology(request):
+# #     message = ""
+# #     try:
+# #         # Kill old graph processes
+# #         ps = subprocess.Popen(['ps', 'aux'], stdout=subprocess.PIPE)
+# #         grep = subprocess.Popen(['grep', 'containerlab graph'], stdin=ps.stdout, stdout=subprocess.PIPE)
+# #         awk = subprocess.Popen(['awk', '{print $2}'], stdin=grep.stdout, stdout=subprocess.PIPE)
+# #         ps.stdout.close()
+# #         grep.stdout.close()
+# #         pids = awk.communicate()[0].decode('utf-8').split()
+# #         for pid in pids:
+# #             if pid and pid != str(os.getpid()):
+# #                 try:
+# #                     os.kill(int(pid), signal.SIGKILL)
+# #                 except Exception:
+# #                     pass
+# #     except Exception as e:
+# #         print(f"Error killing old graph processes: {e}")
+
+
+# #     except Exception as e:
+# #         message = f"Error: {e}"
+
+# #     return render(request, 'visualise.html', {'message': message})
+
+
+# def home(request):
+#     return render(request, 'index.html')
+
+# def visualise_topology(request):
+#     return render(request, 'visualise.html')
+
+
+# def yaml_topology(request):
+#     return render(request, 'yaml_result.html')
+
+# def user_input(request):
+#     print("[DEBUG] user_input view called with method:", request.method)
+#     if request.method == 'POST':
+#         user_input = request.POST.get('user_input')
+#         action = request.POST.get('action')
+#         print("[DEBUG] Received user input:", user_input)
+#         print("[DEBUG] Action:", action)    
+#         if action == 'generate' and user_input and user_input.strip():
+#             cleaned_input = clean_version_in_input(user_input)
+#             messages = [{"role": "user", "content": cleaned_input}]
+#             try:
+#                 yaml_output = get_yaml(messages)
+#                 print("[DEBUG] YAML generated:", yaml_output)
+#                 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root
+#                 file_path = os.path.join(BASE_DIR, 'mainapp','static', 'data', 'current_lab.yml')
+#                 with open(file_path, "w") as f:
+#                     f.write(yaml_output)
+#                     print(f"[DEBUG] YAML written to file: {yaml_output}") 
+#                 return render(request, 'visualise.html', {
+#                     'message': "YAML generated",
+#                     'yaml': yaml_output
+#                 })
+#             except Exception as e:
+#                 return render(request, 'visualise.html', {'message': f"Error: {e}"})
+
+#         elif action == 'deploy':
+#             # Your deploy logic here
+#             return HttpResponse("Deploy clicked")
+
+#         elif action == 'destroy':
+#             # Your destroy logic here
+#             return HttpResponse("Destroy clicked")
+
+#     return render(request, 'visualise.html')
+
 @csrf_exempt
 def webex_webhook(request):
-    """Handle incoming webhooks from Webex"""
-    print("[DEBUG] Received webhook request")
-    print(f"[DEBUG] Request method: {request.method}")
-    
-    # Test Webex API connection first
-    if not webex_bot.test_connection():
-        return JsonResponse({"status": "error", "message": "Failed to connect to Webex API"}, status=500)
-    
-    if request.method == "POST":
-        try:
-            webhook_data = json.loads(request.body)
-            print(f"[DEBUG] Webhook data: {json.dumps(webhook_data, indent=2)}")
-            
-            # Validate webhook data
-            if not webhook_data.get('data', {}).get('id'):
-                print("[DEBUG] Error: Missing message ID in webhook data")
-                return JsonResponse({"status": "error", "message": "Invalid webhook data"}, status=400)
-                
-            # Handle the message
-            webex_bot.handle_message(webhook_data)
-            print("[DEBUG] Successfully processed webhook")
-            return JsonResponse({"status": "success"})
-            
-        except json.JSONDecodeError as e:
-            print(f"[DEBUG] Error decoding webhook JSON: {str(e)}")
-            return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
-        except Exception as e:
-            print(f"[DEBUG] Unexpected error in webhook handler: {str(e)}")
-            return JsonResponse({"status": "error", "message": str(e)}, status=500)
-    
-    return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
-
-
-@csrf_exempt
-def perform_deep_clean(request):
-    """Deep clean the lab by destroying all containers and cleaning up resources."""
+    """Handle incoming Webex webhooks"""
     if request.method == 'POST':
         try:
-            # Step 1: Destroy lab
-            subprocess.run(
-                ["containerlab", "destroy", "-t", YAML_FILE, "--cleanup"],
-                capture_output=True, text=True,
-                check=True
-            )
-            # Step 2: Remove any leftover containers
-            subprocess.run(
-                "docker ps -a --format '{{.Names}}' | grep clab-Cisco_Internal | xargs -r docker rm -f",
-                shell=True, capture_output=True, text=True,
-                check=True
-            )
-            # Step 3: Remove management network
-            subprocess.run(
-                ["docker", "network", "rm", "clab_cisco_internal"],
-                capture_output=True, text=True,
-                check=True
-            )
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Deep clean complete!'
-            })
-        except subprocess.CalledProcessError as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'Error during deep clean: {e.stderr}'
-            }, status=500)
+            webhook_data = json.loads(request.body)
+            webex_bot.handle_message(webhook_data)
+            return JsonResponse({'status': 'success'})
         except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'Error during deep clean: {str(e)}'
-            }, status=500)
-    return JsonResponse({'message': 'Method not allowed'}, status=405)
-
-
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
 

@@ -1,0 +1,51 @@
+import re
+import subprocess
+import json
+
+BASE_PORT = 3101
+SERVER_IP = "10.77.92.106"  # Change to your server's IP
+
+def parse_clab_deploy_output(deploy_output, base_port=3101):
+    """
+    Parses containerlab deploy ASCII table output.
+    Returns a list of dicts: [{'node': 'R1', 'ip': '111.111.111.111', 'wetty_port': 3101}, ...]
+    """
+    results = []
+    # Match lines with: clab-Cisco_Internal-R1 │ ... │ 111.111.111.111 │
+    pattern = r"clab-[\w\-]+-(R\d+)\s+\│[^\│]+\│[^\│]+\│\s+([\d\.]+)\s+\│"
+    matches = re.findall(pattern, deploy_output)
+    for idx, (node, ip) in enumerate(matches):
+        results.append({
+            'node': node,
+            'ip': ip,
+            'wetty_port': base_port + idx
+        })
+    return results
+
+def launch_wetty_per_router(node_list):
+    """
+    Launches a Wetty instance for each router.
+    """
+    for node in node_list:
+        cmd = [
+            "wetty",
+            "--port", str(node['wetty_port']),
+            "--command", f"ssh clab@{node['ip']}"
+        ]
+        subprocess.Popen(cmd)
+        print(f"Started Wetty for {node['node']} at port {node['wetty_port']}")
+
+def save_node_list(node_list, filename="router_nodes.json"):
+    with open(filename, "w") as f:
+        json.dump(node_list, f)
+
+# ---- Example usage after deploy ----
+if __name__ == "__main__":
+    # Suppose deploy_output is captured as a string from your deploy process
+    with open("deploy_output.txt") as f:
+        deploy_output = f.read()
+
+    node_list = parse_clab_deploy_output(deploy_output, BASE_PORT)
+    launch_wetty_per_router(node_list)
+    save_node_list(node_list)
+    print("Router info saved for Streamlit app.")

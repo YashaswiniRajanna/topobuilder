@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YAML Result</title>
+    {% csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <link rel="stylesheet" href="/static/css/yaml.css">
+    <style>
+        .split-layout {
+            display: flex;
+            height: calc(100vh - 60px);
+            margin-top: 10px;
+            position: relative;
+            gap:5px
+        }
+        
+        .yaml-section {
+            flex: 0 0 20%;
+            padding: 20px;
+            min-width: 200px;
+            overflow: auto;
+            margin: 10px;
+
+        }
+        
+        .right-section {
+            flex: 0 0 73%;
+            padding: 5px;
+            overflow: auto;
+            border:#1d1d7d;
+        }
+
+        .resizer {
+            width: 9px;
+            background-color: #87878a;
+            cursor: col-resize;
+            position: absolute;
+            margin: 10px;
+            left: 22%;
+            top: 0;
+            bottom: 0;
+            border-left: 1px solid #ccc;
+            border-right: 1px solid #ccc;
+            z-index: 100;
+        }
+
+        .resizer:hover {
+            background-color: #ddd;
+        }
+       
+        .tab-container {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            height: 98%;
+            display: flex;
+            flex-direction: column;
+        }
+      
+        .tab-buttons {
+            display: flex;
+            gap: 4px;
+            padding: 8px 8px 0;
+            background-color: #f8fafc;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+     
+        .tab-button {
+            padding: 12px 24px;
+            border: none;
+            background-color: transparent;
+            color: #64748b;
+            cursor: pointer;
+            font-weight: 500;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s ease;
+            position: relative;
+            outline: none;
+            font-size: 14px;
+            letter-spacing: 0.3px;
+        }
+
+        .tab-button:focus-visible {
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
+
+        .tab-button::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #3b82f6;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .tab-button:hover {
+            color: #1e293b;
+            background-color: #f1f5f9;
+        }
+
+        .tab-button.active {
+            color: #3b82f6;
+            background-color: #fff;
+        }
+
+        .tab-button.active::after {
+            transform: scaleX(1);
+        }
+
+        .tab-content {
+            padding: 20px;
+            display: none;
+            background-color: #fff;
+            border-radius: 0 0 8px 8px;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .tab-content.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .tab-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        #yaml-clipboard {
+            width: 100%;
+            height: 550px;
+            /* font-family: 'Courier New', Courier, monospace; */
+            font-size: 14px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            padding: 15px;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #deepCleanBtn {
+            display: inline-block;
+        }
+        
+        #deepCleanBtn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+    <nav>
+        <ul class="navbar">
+            <div class="nav-left">
+                <li><a href="/">Home</a></li> 
+                <li><a href="/">About</a></li>
+            </div>
+            <div class="nav-right">
+                <li><a href="#" id="deepCleanBtn" onclick="performDeepClean(); return false;">🧹 Clean</a></li>
+                <li><a href="/upload">Device CLI</a></li>
+                <li><a href="/user_input">Data</a></li>
+            </div>
+        </ul>
+    </nav>
+
+    <div class="split-layout">
+        <!-- Left side - YAML content -->
+        <div class="yaml-section">
+            <h1>{{ message }}</h1>
+            
+            <!-- Dark/Light Mode Toggle -->
+            <label class="switch">
+                <input type="checkbox" id="modeToggle" />
+                <span>Dark Mode</span>
+            </label>
+
+            <!-- Clipboard styled pre block -->
+            <pre id="yaml-clipboard" readonly>{{ yaml }}</pre>
+
+            <div class="button-group">
+                <button id="copyBtn">Copy to Clipboard</button>
+            </div>
+        </div>
+
+        <!-- Resizer bar -->
+        <div class="resizer" id="resizer"></div>
+
+        <!-- Right side - Tabs -->
+        <div class="right-section">
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="visualise">Topology Visualization</button>
+                    <button class="tab-button" data-tab="terminal">CLI Terminal</button>
+                </div>
+
+                <!-- Visualization Tab -->
+                <div id="visualise-tab" class="tab-content active">
+                    <div id="topoOutput" style="display: none; margin-bottom: 15px; padding: 10px; background: #f1f5f9; border-radius: 4px;">
+                        <pre style="margin: 0; white-space: pre-wrap;"></pre>
+                    </div>
+                    <div style="height: calc(100% - 50px); position: relative;">
+                        <iframe id="topoGraph" src="{{ graph_url }}" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0;" frameborder="0"></iframe>
+                    </div>
+                    <button id="refreshBtn" class="action-button" style="margin-top: 10px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Refresh Topology
+                    </button>
+                    <span style="margin-left: 16px; color: #64748b; font-size: 14px;">
+                        Access topology <a href="http://10.77.92.106:50080/" target="_blank" style="color: #3b82f6; text-decoration: underline;">here</a>
+                    </span>
+                </div>
+
+                <!-- Terminal Tab -->
+                <div id="terminal-tab" class="tab-content">
+                    <div class="terminal-controls" style="margin-bottom: 15px;">
+                        <button id="cleanupBtn" class="action-button" style="margin-right: 10px; padding: 8px 16px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Clean Up Old Session
+                        </button>
+                        <button id="activateBtn" class="action-button" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Activate Console Access
+                        </button>
+                    </div>
+                    <div id="sshxOutput" style="display: none; margin-bottom: 15px; padding: 10px; background: #f1f5f9; border-radius: 4px;">
+                        <pre style="margin: 0; white-space: pre-wrap;"></pre>
+                    </div>
+                    <div id="sshxLink" style="display: none; margin-bottom: 15px;">
+                        <a href="" target="_blank" class="console-link" style="color: #3b82f6; text-decoration: none;">Open Terminal Session in new tab</a>
+                    </div>
+                    <div id="terminalFrame" style="height: calc(100% - 120px); display: none;">
+                        <iframe id="sshxIframe" style="width: 100%; height: 100%; border: none; border-radius: 4px;" frameborder="0"></iframe>
+                    </div>
+                    <div id="routerAccess" class="router-access-info" style="margin-top: 15px;">
+                        <h3 style="color: #1e293b; margin-bottom: 10px;">🔑 Router SSH Access</h3>
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 4px;">
+                            <p style="margin: 0 0 10px 0;"><strong>How to log in:</strong></p>
+                            <ol style="margin: 0; padding-left: 20px;">
+                                <li>Open a terminal on this server (or your jump host)</li>
+                                <li>Run the SSH command for your router</li>
+                            </ol>
+                            <p style="margin: 10px 0;"><strong>Username:</strong> <code>clab</code> <strong>Password:</strong> <code>clab@123</code></p>
+                        </div>
+                        <div id="routerList" class="router-list" style="margin-top: 15px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modeToggle = document.getElementById('modeToggle');
+        const body = document.body;
+        const copyBtn = document.getElementById('copyBtn');
+        const yamlClipboard = document.getElementById('yaml-clipboard');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Deep Clean functionality
+        async function performDeepClean() {
+            if (!confirm('Are you sure you want to destroy the lab and clean up all resources? This action cannot be undone.')) {
+                return;
+            }
+
+            const deepCleanBtn = document.getElementById('deepCleanBtn');
+            const originalText = deepCleanBtn.innerHTML;
+            deepCleanBtn.setAttribute('disabled', 'true');
+            deepCleanBtn.innerHTML = '🔄 Cleaning...';
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const response = await fetch('/perform_deep_clean/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Deep clean complete!');
+                    location.reload();
+                } else {
+                    throw new Error(data.message || 'Deep clean failed');
+                }
+            } catch (error) {
+                alert('Error during deep clean: ' + error.message);
+            } finally {
+                deepCleanBtn.removeAttribute('disabled');
+                deepCleanBtn.innerHTML = originalText;
+            }
+        }
+
+        // Toggle dark/light mode
+        modeToggle.addEventListener('change', () => {
+            body.classList.toggle('dark-mode', modeToggle.checked);
+        });
+
+        // Refresh topology functionality
+        const refreshBtn = document.getElementById('refreshBtn');
+        const topoGraph = document.getElementById('topoGraph');
+
+        refreshBtn.addEventListener('click', async () => {
+            try {
+                refreshBtn.disabled = true;
+                refreshBtn.textContent = 'Refreshing...';
+                
+                const response = await fetch('/view_topology/', {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                const topoOutput = document.getElementById('topoOutput');
+                const topoOutputPre = topoOutput.querySelector('pre');
+                topoOutput.style.display = 'block';
+
+                if (data.status === 'success') {
+                    topoGraph.src = data.graph_url;
+                    topoOutput.style.backgroundColor = '#dcfce7';
+                    topoOutputPre.style.color = '#166534';
+                    topoOutputPre.textContent = 'Topology refreshed successfully';
+                } else {
+                    topoOutput.style.backgroundColor = '#fee2e2';
+                    topoOutputPre.style.color = '#991b1b';
+                    topoOutputPre.textContent = data.message || 'Failed to refresh topology';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                topoOutput.style.display = 'block';
+                topoOutput.style.backgroundColor = '#fee2e2';
+                topoOutputPre.style.color = '#991b1b';
+                topoOutputPre.textContent = 'Error refreshing topology';
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = 'Refresh Topology';
+            }
+        });
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.padding = '10px 20px';
+            notification.style.borderRadius = '4px';
+            notification.style.backgroundColor = type === 'success' ? '#48bb78' : '#f56565';
+            notification.style.color = 'white';
+            notification.style.zIndex = '1000';
+            
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Auto-refresh when switching to visualization tab
+        tabButtons.forEach(button => {
+            if (button.getAttribute('data-tab') === 'visualise') {
+                button.addEventListener('click', () => refreshBtn.click());
+            }
+        });
+
+        // Copy to clipboard functionality
+        copyBtn.addEventListener('click', () => {
+            const text = yamlClipboard.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => copyBtn.textContent = 'Copy to Clipboard', 2000);
+            }).catch(err => {
+                alert('Failed to copy text: ' + err);
+            });
+        });
+
+        // Tab switching functionality
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Update active states of buttons
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update active states of content
+                tabContents.forEach(content => content.classList.remove('active'));
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            });
+        });
+
+        // Resizer functionality
+        const resizer = document.getElementById('resizer');
+        const leftPanel = document.querySelector('.yaml-section');
+        const rightPanel = document.querySelector('.right-section');
+        
+        let isResizing = false;
+        let startX;
+        let startLeftWidth;
+        
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.pageX;
+            startLeftWidth = leftPanel.offsetWidth;
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+            });
+        });
+        
+        function handleMouseMove(e) {
+            if (!isResizing) return;
+            
+            const diff = e.pageX - startX;
+            const newLeftWidth = ((startLeftWidth + diff) / resizer.parentNode.offsetWidth) * 100;
+            
+            // Set minimum and maximum widths (in percentage)
+            if (newLeftWidth > 10 && newLeftWidth < 90) {
+                leftPanel.style.flex = `0 0 ${newLeftWidth}%`;
+                rightPanel.style.flex = `0 0 ${100 - newLeftWidth}%`;
+                resizer.style.left = `${newLeftWidth}%`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching functionality
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.dataset.tab;
+                    
+                    // Update button states
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    // Update content states
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+
+            // Resizer functionality
+            const resizer = document.getElementById('resizer');
+            const leftPane = document.querySelector('.yaml-section');
+
+            let isResizing = false;
+
+            resizer.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', () => {
+                    isResizing = false;
+                    document.removeEventListener('mousemove', handleMouseMove);
+                });
+            });
+
+            function handleMouseMove(e) {
+                if (!isResizing) return;
+
+                const containerRect = document.querySelector('.split-layout').getBoundingClientRect();
+                const newWidth = e.clientX - containerRect.left;
+                const containerWidth = containerRect.width;
+                
+                // Convert to percentage and apply limits
+                const percentage = Math.min(Math.max((newWidth / containerWidth) * 100, 15), 50);
+                
+                leftPane.style.flex = `0 0 ${percentage}%`;
+                resizer.style.left = `${percentage}%`;
+            }
+
+            // Terminal functionality
+            const cleanupBtn = document.getElementById('cleanupBtn');
+            const activateBtn = document.getElementById('activateBtn');
+            const sshxOutput = document.getElementById('sshxOutput');
+            const sshxLink = document.getElementById('sshxLink');
+            const terminalFrame = document.getElementById('terminalFrame');
+            const routerList = document.getElementById('routerList');
+
+            cleanupBtn.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/cleanup_sshx/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
+                    const data = await response.json();
+                    showMessage(data.message, data.status === 'success' ? 'success' : 'error');
+                } catch (error) {
+                    showMessage('Failed to clean up SSHX session', 'error');
+                }
+            });
+
+            activateBtn.addEventListener('click', async () => {
+                activateBtn.disabled = true;
+                activateBtn.innerHTML = 'Starting session...';
+                sshxOutput.style.display = 'block';
+                sshxOutput.querySelector('pre').textContent = 'Initializing SSHX session...\n';
+
+                try {
+                    const response = await fetch('/activate_sshx/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
+                    const data = await response.json();
+
+                    if (data.status === 'success' && data.sshx_link) {
+                        sshxLink.style.display = 'block';
+                        sshxLink.querySelector('a').href = data.sshx_link;
+                        terminalFrame.style.display = 'block';
+                        document.getElementById('sshxIframe').src = data.sshx_link;
+                        showMessage('SSHX session activated successfully', 'success');
+                    } else {
+                        showMessage(data.message || 'Failed to activate SSHX session', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Failed to activate SSHX session', 'error');
+                } finally {
+                    activateBtn.disabled = false;
+                    activateBtn.innerHTML = 'Activate Console Access';
+                }
+            });
+
+            // Update router list
+            async function updateRouterList() {
+                try {
+                    const response = await fetch('/get_router_list/');
+                    const data = await response.json();
+                    if (data.routers && data.routers.length > 0) {
+                        routerList.innerHTML = data.routers.map(router => `
+                            <div class="router-item" style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: white; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                <div style="flex: 1;"><strong>${router.node}</strong></div>
+                                <div style="flex: 1;">${router.ip}</div>
+                                <div style="flex: 2;">
+                                    <code style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">ssh clab@${router.ip}</code>
+                                </div>
+                                <div style="flex: 2; display: flex; gap: 4px; flex-wrap: wrap;">
+                                    ${router.interfaces ? router.interfaces.map(intf => `
+                                        <code style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">${intf}</code>
+                                    `).join('') : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        routerList.innerHTML = '<p>No routers found. Deploy a topology first.</p>';
+                    }
+                } catch (error) {
+                    routerList.innerHTML = '<p>Error loading router information.</p>';
+                }
+            }
+
+            // Update router list on page load and after deployment
+            updateRouterList();
+
+            // Utility functions
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            function showMessage(message, type = 'info') {
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = message;
+                messageDiv.style.padding = '10px';
+                messageDiv.style.marginBottom = '10px';
+                messageDiv.style.borderRadius = '4px';
+                messageDiv.style.backgroundColor = type === 'success' ? '#dcfce7' : type === 'error' ? '#fee2e2' : '#f0f9ff';
+                messageDiv.style.color = type === 'success' ? '#166534' : type === 'error' ? '#991b1b' : '#075985';
+                
+                const container = document.querySelector('.terminal-controls');
+                container.insertBefore(messageDiv, container.firstChild);
+                
+                setTimeout(() => messageDiv.remove(), 5000);
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
