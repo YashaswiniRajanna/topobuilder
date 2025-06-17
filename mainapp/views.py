@@ -86,7 +86,7 @@ def activate_sshx(request):
             sshx_link = None
             output_lines = []
             start_time = time.time()
-            max_wait = 120
+            max_wait = 30
 
             while True:
                 line = proc.stdout.readline()
@@ -457,6 +457,24 @@ def perform_deep_clean(request):
             return JsonResponse({
                 'status': 'error',
                 'message': f'Error during deep clean: {str(e)}'
+            }, status=500)
+    return JsonResponse({'message': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def perform_destroy_lab(request):
+    """Destroy the current lab."""
+    if request.method == 'POST':
+        try:
+            destroy_lab()
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Lab destroyed successfully'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error destroying lab: {str(e)}'
             }, status=500)
     return JsonResponse({'message': 'Method not allowed'}, status=405)
 

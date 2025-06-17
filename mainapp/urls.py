@@ -12,6 +12,7 @@ urlpatterns = [
     path('activate_sshx/', views.activate_sshx, name='activate_sshx'),
     path('get_router_list/', views.get_router_list, name='get_router_list'),
     path('perform_deep_clean/', views.perform_deep_clean, name='perform_deep_clean'),
+    path('perform_destroy_lab/', views.perform_destroy_lab, name='perform_destroy_lab'),
 
     # path('about/', views.about, name='about'),
     # path('contact/', views.contact, name='contact'),

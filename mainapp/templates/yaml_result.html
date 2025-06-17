@@ -176,7 +176,9 @@
                 <li><a href="/">About</a></li>
             </div>
             <div class="nav-right">
-                <li><a href="#" id="deepCleanBtn" onclick="performDeepClean(); return false;">🧹 Clean</a></li>
+                <li><a href="#" id="destroyLabBtn" onclick="performDestroyLab(); return false;">Destroy Lab</a></li>
+                <li><a href="#" id="deepCleanBtn" onclick="performDeepClean(); return false;">Clean</a></li>
+
                 <li><a href="/upload">Device CLI</a></li>
                 <li><a href="/user_input">Data</a></li>
             </div>
@@ -307,6 +309,43 @@
             } finally {
                 deepCleanBtn.removeAttribute('disabled');
                 deepCleanBtn.innerHTML = originalText;
+            }
+        }
+
+        // Destroy Lab functionality
+        async function performDestroyLab() {
+            if (!confirm('Are you sure you want to destroy the lab? This action cannot be undone.')) {
+                return;
+            }
+
+            const destroyBtn = document.getElementById('destroyLabBtn');
+            destroyBtn.style.opacity = '0.5';
+            destroyBtn.style.pointerEvents = 'none';
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const response = await fetch('/perform_destroy_lab/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Lab destroyed successfully');
+                    // Optionally refresh the page or update UI as needed
+                    location.reload();
+                } else {
+                    throw new Error(data.message || 'Failed to destroy lab');
+                }
+            } catch (error) {
+                alert('Error destroying lab: ' + error.message);
+            } finally {
+                destroyBtn.style.opacity = '1';
+                destroyBtn.style.pointerEvents = 'auto';
             }
         }
 

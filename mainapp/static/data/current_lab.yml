@@ -9,11 +9,11 @@ topology:
       kind: cisco_xrd
       image: containers.cisco.com/xrd-prod/xrd-control-plane:latest-25.4
   nodes:
-    R1:
+    r11:
       kind: xrd
       mgmt-ipv4: 111.111.111.111
-    R4:
+    r3:
       kind: xrd
       mgmt-ipv4: 111.111.111.112
   links:
-    - endpoints: ["R1:Gi0-0-0-1", "R4:Gi0-0-0-1"]
+    - endpoints: ["r11:Gi0-0-0-1", "r3:Gi0-0-0-1"]
